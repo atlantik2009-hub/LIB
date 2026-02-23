@@ -80,7 +80,8 @@ def load_df_moex(ticker, start_date, end_date, INTRA_MODE, forced_cache=False):
         cache_file = os.path.join(cache_dir, f"{ticker}_{start_date[:10]}_1m.csv")
         
         if os.path.exists(cache_file) and is_current_date(start_date[:10]) == False:
-            final_df = pd.read_csv(cache_file, parse_dates=["begin", "end"])
+            #final_df = pd.read_csv(cache_file, parse_dates=["begin", "end"])
+            final_df = pd.read_csv(cache_file)
             if not final_df.empty:
                 LOGS(TRACE, f"[{ticker}] Data read: {cache_file}. Length (1m) = {len(final_df)}")
                 #LOGS(TRACE, final_df.to_string())
