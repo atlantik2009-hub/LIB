@@ -1,3 +1,4 @@
+import os, sys, shutil
 import requests
 import pandas as pd
 from datetime import datetime
@@ -26,6 +27,25 @@ def is_time_more_or_equal(time_str1, time_str2):
     # Compare times
     return time1 >= time2
 
+def check_full_day_time(df):
+    first_time = pd.to_datetime(df.iloc[0]['begin']).strftime('%H:%M:%S')
+    last_time = pd.to_datetime(df.iloc[-1]['begin']).strftime('%H:%M:%S')
+    print(first_time, last_time, )
+    
+    if first_time == '06:59:00' and last_time == '23:49:00':
+        print("check_full_day_time returns True")
+        return True
+
+    return False
+
+def is_current_date(date_str):
+    try:
+        date = datetime.strptime(date_str, "%Y-%m-%d")       
+        today = datetime.now().date()        
+        return date.date() == today
+    except ValueError:
+        return False
+
 # INTRA_MODE
 # 1  - 1 minute
 # 10 - 10 minutes
@@ -33,7 +53,6 @@ def is_time_more_or_equal(time_str1, time_str2):
 # 24 - 1 day
 def load_df_moex(ticker, start_date, end_date, INTRA_MODE):
     LOGS( TRACE, "load_df_moex:", ticker, start_date, end_date, INTRA_MODE )
-
     """
     Load data from MOEX API for a given ticker and date range.
     
@@ -54,6 +73,19 @@ def load_df_moex(ticker, start_date, end_date, INTRA_MODE):
 
     # Initialize an empty DataFrame
     final_df = pd.DataFrame()
+
+    if INTRA_MODE == 1:
+        cache_dir = "cache_algo_1m"
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_file = os.path.join(cache_dir, f"{ticker}_{start_date[:10]}_1m.csv")
+        
+        if os.path.exists(cache_file) and is_current_date(start_date[:10]) == False:
+            final_df = pd.read_csv(cache_file, parse_dates=["begin", "end"])
+            if not final_df.empty:
+                LOGS(TRACE, f"[{ticker}] Data read: {cache_file}. Length (1m) = {len(final_df)}")
+                print(final_df.to_string())
+                final_df = final_df.loc[(final_df['begin'] <= end_date)]
+                return final_df
 
     payload = {}
     headers = {
@@ -97,7 +129,12 @@ def load_df_moex(ticker, start_date, end_date, INTRA_MODE):
             if is_time_more_or_equal(end_time[i], end_time_in) == True:
                break 
 
-            
+        # Cache df
+        if check_full_day_time(final_df) == True and os.path.exists(cache_file) == False:
+             final_df.to_csv(cache_file, index=False)
+             LOGS(TRACE, f"[{ticker}] Data cached: {cache_file}. Length(1m) = {len(final_df)}")
+
+          
     else:
         # For other intervals (10, 60, 24), fetch data for the entire day
         url = f"https://apim.moex.com/iss/engines/stock/markets/shares/boards/tqbr/securities/{ticker}/candles.json?from={start_date}&till={end_date}&interval={INTRA_MODE}"
