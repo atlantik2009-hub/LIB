@@ -33,7 +33,7 @@ def check_full_day_time(df):
     print(first_time, last_time, )
     
     if first_time == '06:59:00' and last_time == '23:49:00':
-        print("check_full_day_time returns True")
+        LOGS(TRACE, "check_full_day_time returns True")
         return True
 
     return False
@@ -51,7 +51,7 @@ def is_current_date(date_str):
 # 10 - 10 minutes
 # 60 - 1 hour
 # 24 - 1 day
-def load_df_moex(ticker, start_date, end_date, INTRA_MODE):
+def load_df_moex(ticker, start_date, end_date, INTRA_MODE, forced_cache=False):
     LOGS( TRACE, "load_df_moex:", ticker, start_date, end_date, INTRA_MODE )
     """
     Load data from MOEX API for a given ticker and date range.
@@ -83,7 +83,7 @@ def load_df_moex(ticker, start_date, end_date, INTRA_MODE):
             final_df = pd.read_csv(cache_file, parse_dates=["begin", "end"])
             if not final_df.empty:
                 LOGS(TRACE, f"[{ticker}] Data read: {cache_file}. Length (1m) = {len(final_df)}")
-                print(final_df.to_string())
+                #LOGS(TRACE, final_df.to_string())
                 final_df = final_df.loc[(final_df['begin'] <= end_date)]
                 return final_df
 
@@ -130,7 +130,7 @@ def load_df_moex(ticker, start_date, end_date, INTRA_MODE):
                break 
 
         # Cache df
-        if check_full_day_time(final_df) == True and os.path.exists(cache_file) == False:
+        if (forced_cache == True) or (check_full_day_time(final_df) == True and os.path.exists(cache_file) == False):
              final_df.to_csv(cache_file, index=False)
              LOGS(TRACE, f"[{ticker}] Data cached: {cache_file}. Length(1m) = {len(final_df)}")
 
